@@ -62,12 +62,14 @@ export default function HomeClient({
   const categories = useMemo(() => {
     const allCategories = initialPosts
       .map((p) => p.category_name)
-      .filter(Boolean);
+      .filter((category): category is string => Boolean(category));
     return Array.from(new Set(allCategories));
   }, [initialPosts]);
 
   const seriesList = useMemo(() => {
-    const allSeries = initialPosts.map((p) => p.series_name).filter(Boolean);
+    const allSeries = initialPosts
+      .map((p) => p.series_name)
+      .filter((series): series is string => Boolean(series));
     return Array.from(new Set(allSeries));
   }, [initialPosts]);
 
@@ -77,7 +79,9 @@ export default function HomeClient({
     if (currentSearchTerm) {
       result = result.filter(
         (p) =>
-          p.title.toLowerCase().includes(currentSearchTerm.toLowerCase()) ||
+          (p.title ?? "")
+            .toLowerCase()
+            .includes(currentSearchTerm.toLowerCase()) ||
           (p.description &&
             p.description
               .toLowerCase()
@@ -90,7 +94,8 @@ export default function HomeClient({
       result = result.filter((p) => p.series_name === currentSeries);
 
     result.sort((a, b) => {
-      if (currentSeries) return a.series_seq_no - b.series_seq_no;
+      if (currentSeries)
+        return (a.series_seq_no ?? 0) - (b.series_seq_no ?? 0);
       if (currentSortOrder === "desc")
         return b.created_at.localeCompare(a.created_at);
       else return a.created_at.localeCompare(b.created_at);
