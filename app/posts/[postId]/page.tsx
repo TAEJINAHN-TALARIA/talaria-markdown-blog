@@ -7,6 +7,8 @@ import PostNavigation from "@/components/PostNavigation";
 import ZoomableImage from "@/components/ZoomableImage";
 import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const STORAGE_BUCKET_NAME = "posts";
 
@@ -160,6 +162,23 @@ export default async function PostPage({
           // [추가] remarkPlugins 속성에 플러그인 추가
           remarkPlugins={[remarkGfm, remarkUnwrapImages]}
           components={{
+            code({ node, inline, className, children, ...props }: any) {
+              const match = /language-(\w+)/.exec(className || "");
+              return !inline && match ? (
+                <SyntaxHighlighter
+                  style={vscDarkPlus} // VS Code 스타일 테마
+                  language={match[1]}
+                  PreTag="div"
+                  {...props}
+                >
+                  {String(children).replace(/\n$/, "")}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            },
             h1: ({ ...props }) => (
               <h2
                 className="text-3xl font-bold mt-10 mb-4 text-gray-900 border-b pb-2"

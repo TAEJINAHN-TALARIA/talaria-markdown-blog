@@ -6,7 +6,7 @@ export default async function Page() {
   const posts = (await GetPostInfo()) || [];
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <HomeClient initialPosts={posts} />;
+      <HomeClient initialPosts={posts} />
     </Suspense>
   );
 }
