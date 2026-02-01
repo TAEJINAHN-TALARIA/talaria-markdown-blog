@@ -125,6 +125,10 @@ export default async function PostPage({
     description: post.description || post.title,
     datePublished: post.created_at,
     dateModified: post.updated_at || post.created_at,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://talaria-markdown-blog.vercel.app/posts/${postId}`,
+    },
     author: {
       "@type": "Person",
       name: "Talaria", // 본인 이름이나 닉네임으로 변경
