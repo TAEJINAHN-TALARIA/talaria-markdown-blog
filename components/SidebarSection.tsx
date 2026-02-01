@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 // Props 타입을 별도로 정의하거나 인라인으로 작성할 수 있습니다.
 interface SidebarSectionProps {
@@ -12,11 +12,15 @@ export default function SidebarSection({
   children,
   defaultOpen = true,
 }: SidebarSectionProps) {
-  // 여기에 중괄호 { } 가 꼭 필요합니다!
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
     <details
       className="group mt-5 border border-gray-200 rounded-lg overflow-hidden bg-white"
-      open={defaultOpen}
+      open={isOpen}
+      onToggle={(e) =>
+        setIsOpen((e.currentTarget as HTMLDetailsElement).open)
+      }
     >
       <summary className="flex justify-between items-center p-4 font-medium cursor-pointer list-none hover:bg-gray-50 transition-colors">
         <span>{title}</span>
