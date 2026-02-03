@@ -16,7 +16,7 @@ export default function PostNavigation() {
         className="flex items-center gap-1 hover:text-blue-600 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span>뒤로</span>
+        <span>Back</span>
       </button>
 
       <span className="text-gray-300">|</span>
@@ -27,7 +27,7 @@ export default function PostNavigation() {
         className="flex items-center gap-1 hover:text-blue-600 transition-colors"
       >
         <Home className="w-4 h-4" />
-        <span>홈으로</span>
+        <span>Home</span>
       </Link>
     </nav>
   );

@@ -2,6 +2,8 @@ import { createClient as createStaticClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
+import type { ComponentProps } from "react";
+import type { Element } from "hast";
 import matter from "gray-matter";
 import PostNavigation from "@/components/PostNavigation";
 import ZoomableImage from "@/components/ZoomableImage";
@@ -13,6 +15,11 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 const STORAGE_BUCKET_NAME = "posts";
 
 export const revalidate = 60;
+
+type CodeProps = ComponentProps<"code"> & {
+  inline?: boolean;
+  node?: Element;
+};
 
 // [추가] 빌드 시에 미리 모든 정적 페이지 경로를 생성합니다.
 export async function generateStaticParams() {
@@ -33,7 +40,7 @@ export async function generateStaticParams() {
   const supabase = createStaticClient(supabaseUrl, supabaseKey);
 
   // 전체 포스트의 slug만 가져옵니다.
-  const { data: posts } = await supabase.from("posts").select("slug");
+  const { data: posts } = await supabase.from("meta_info").select("slug");
 
   return (posts || []).map((post) => ({
     postId: post.slug,
@@ -57,7 +64,7 @@ export async function generateMetadata({
   const supabase = getPublicSupabase();
 
   const { data: post } = await supabase
-    .from("posts")
+    .from("meta_info")
     .select("title, description") // 필요한 필드만 조회
     .eq("slug", postId)
     .single();
@@ -90,7 +97,7 @@ export default async function PostPage({
 
   // 1. DB 조회
   const { data: post, error: dbError } = await supabase
-    .from("posts")
+    .from("meta_info")
     .select("*")
     .eq("slug", postId)
     .single();
