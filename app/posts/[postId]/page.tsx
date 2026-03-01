@@ -7,9 +7,9 @@ import PostNavigation from "@/components/PostNavigation";
 import ZoomableImage from "@/components/ZoomableImage";
 import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import Comments from "@/components/Comments";
+import TableOfContents from "@/components/TableOfContents";
+import CodeBlock from "@/components/CodeBlock";
 
 const STORAGE_BUCKET_NAME = "posts";
 
@@ -139,23 +139,25 @@ export default async function PostPage({
   };
 
   return (
-    <main className="max-w-4xl mx-auto p-6 md:py-12 bg-white min-h-screen">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <PostNavigation />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <TableOfContents />
+      <main className="max-w-4xl mx-auto p-6 md:py-12 bg-white dark:bg-gray-800 rounded-lg shadow-sm my-8">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <PostNavigation />
 
-      <header className="mb-10 border-b border-gray-200 pb-6">
+      <header className="mb-10 border-b border-gray-200 dark:border-gray-700 pb-6">
         {/* 제목 사이즈: 모바일 4xl -> 데스크탑 5xl */}
-        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
           {post.title}
         </h1>
         {/* 날짜나 카테고리 정보 등을 여기에 추가하면 더 좋습니다 */}
       </header>
 
       <article
-        className="prose prose-blue max-w-none
+        className="prose prose-blue dark:prose-invert max-w-none
         prose-img:rounded-xl prose-headings:scroll-mt-20
         md:prose-lg"
       >
@@ -166,14 +168,9 @@ export default async function PostPage({
             code({ node, inline, className, children, ...props }: any) {
               const match = /language-(\w+)/.exec(className || "");
               return !inline && match ? (
-                <SyntaxHighlighter
-                  style={vscDarkPlus} // VS Code 스타일 테마
-                  language={match[1]}
-                  PreTag="div"
-                  {...props}
-                >
+                <CodeBlock language={match[1]}>
                   {String(children).replace(/\n$/, "")}
-                </SyntaxHighlighter>
+                </CodeBlock>
               ) : (
                 <code className={className} {...props}>
                   {children}
@@ -182,7 +179,7 @@ export default async function PostPage({
             },
             h1: ({ ...props }) => (
               <h2
-                className="text-3xl font-bold mt-10 mb-4 text-gray-900 border-b pb-2"
+                className="text-3xl font-bold mt-10 mb-4 text-gray-900 dark:text-gray-100 border-b dark:border-gray-700 pb-2"
                 {...props}
               />
             ),
@@ -190,14 +187,14 @@ export default async function PostPage({
             // 2. 마크다운의 H2(##) -> 실제로는 H3로 렌더링
             h2: ({ ...props }) => (
               <h3
-                className="text-2xl font-semibold mt-8 mb-3 text-gray-800"
+                className="text-2xl font-semibold mt-8 mb-3 text-gray-800 dark:text-gray-200"
                 {...props}
               />
             ),
             // 3. 마크다운의 H3(###) -> 실제로는 H4로 렌더링
             h3: ({ ...props }) => (
               <h4
-                className="text-xl font-medium mt-6 mb-2 text-gray-800"
+                className="text-xl font-medium mt-6 mb-2 text-gray-800 dark:text-gray-200"
                 {...props}
               />
             ),
@@ -227,7 +224,8 @@ export default async function PostPage({
         </ReactMarkdown>
       </article>
 
-      <Comments />
-    </main>
+        <Comments />
+      </main>
+    </div>
   );
 }

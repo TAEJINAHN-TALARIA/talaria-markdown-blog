@@ -16,13 +16,13 @@ export default function SidebarSection({
 
   return (
     <details
-      className="group mt-5 border border-gray-200 rounded-lg overflow-hidden bg-white"
+      className="group mt-5 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-700"
       open={isOpen}
       onToggle={(e) =>
         setIsOpen((e.currentTarget as HTMLDetailsElement).open)
       }
     >
-      <summary className="flex justify-between items-center p-4 font-medium cursor-pointer list-none hover:bg-gray-50 transition-colors">
+      <summary className="flex justify-between items-center p-4 font-medium cursor-pointer list-none hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-gray-800 dark:text-gray-100">
         <span>{title}</span>
         <span className="transition-transform group-open:rotate-180">
           <svg
@@ -40,7 +40,7 @@ export default function SidebarSection({
           </svg>
         </span>
       </summary>
-      <div className="p-4 border-t border-gray-200 text-gray-600">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300">
         {children}
       </div>
     </details>
