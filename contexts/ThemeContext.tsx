@@ -24,7 +24,6 @@ function getInitialTheme(): Theme {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
-  const [mounted, setMounted] = useState(false);
 
   // 마운트 시 한 번만 실행
   useEffect(() => {
@@ -36,11 +35,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.classList.toggle("dark", prefersDark);
     }
-
-    // mounted를 마지막에 설정
-    requestAnimationFrame(() => {
-      setMounted(true);
-    });
   }, []);
 
   const toggleTheme = () => {
@@ -51,11 +45,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return newTheme;
     });
   };
-
-  // 마운트 전에는 아무것도 렌더링하지 않음 (깜빡임 방지)
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
