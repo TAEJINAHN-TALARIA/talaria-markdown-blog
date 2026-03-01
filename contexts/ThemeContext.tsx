@@ -28,8 +28,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // 마운트 시 한 번만 실행
   useEffect(() => {
-    setMounted(true);
-
     // DOM 클래스 동기화
     const savedTheme = localStorage.getItem("theme") as Theme | null;
     if (savedTheme) {
@@ -38,6 +36,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.classList.toggle("dark", prefersDark);
     }
+
+    // mounted를 마지막에 설정
+    requestAnimationFrame(() => {
+      setMounted(true);
+    });
   }, []);
 
   const toggleTheme = () => {
