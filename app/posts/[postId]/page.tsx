@@ -2,8 +2,6 @@ import { createClient as createStaticClient } from "@supabase/supabase-js";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
-import type { ComponentProps } from "react";
-import type { Element } from "hast";
 import matter from "gray-matter";
 import PostNavigation from "@/components/PostNavigation";
 import ZoomableImage from "@/components/ZoomableImage";
@@ -11,15 +9,11 @@ import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import Comments from "@/components/Comments";
 
 const STORAGE_BUCKET_NAME = "posts";
 
 export const revalidate = 60;
-
-type CodeProps = ComponentProps<"code"> & {
-  inline?: boolean;
-  node?: Element;
-};
 
 // [추가] 빌드 시에 미리 모든 정적 페이지 경로를 생성합니다.
 export async function generateStaticParams() {
@@ -232,6 +226,8 @@ export default async function PostPage({
           {content}
         </ReactMarkdown>
       </article>
+
+      <Comments />
     </main>
   );
 }

@@ -94,8 +94,7 @@ export default function HomeClient({
       result = result.filter((p) => p.series_name === currentSeries);
 
     result.sort((a, b) => {
-      if (currentSeries)
-        return (a.series_seq_no ?? 0) - (b.series_seq_no ?? 0);
+      if (currentSeries) return (a.series_seq_no ?? 0) - (b.series_seq_no ?? 0);
       if (currentSortOrder === "desc")
         return b.created_at.localeCompare(a.created_at);
       else return a.created_at.localeCompare(b.created_at);
@@ -281,7 +280,7 @@ export default function HomeClient({
           {!currentSeries && (
             <button
               onClick={toggleSort}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-600 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 cursor-pointer bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-medium text-gray-600 transition-colors"
             >
               <ArrowUpDown className="w-4 h-4" />
               {currentSortOrder === "desc" ? "Latest First" : "Oldest First"}

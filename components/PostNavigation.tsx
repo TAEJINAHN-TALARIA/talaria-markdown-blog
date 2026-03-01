@@ -13,7 +13,7 @@ export default function PostNavigation() {
       {/* 뒤로 가기 버튼: 브라우저 히스토리 이용 */}
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+        className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back</span>
