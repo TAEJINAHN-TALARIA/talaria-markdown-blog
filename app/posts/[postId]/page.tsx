@@ -10,6 +10,7 @@ import remarkGfm from "remark-gfm";
 import Comments from "@/components/Comments";
 import TableOfContents from "@/components/TableOfContents";
 import CodeBlock from "@/components/CodeBlock";
+import ShareButtons from "@/components/ShareButtons";
 
 const STORAGE_BUCKET_NAME = "posts";
 
@@ -148,12 +149,12 @@ export default async function PostPage({
         />
         <PostNavigation />
 
-      <header className="mb-10 border-b border-gray-200 dark:border-gray-700 pb-6">
+      <header className="mb-10">
         {/* 제목 사이즈: 모바일 4xl -> 데스크탑 5xl */}
         <h1 className="text-3xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4 leading-tight">
           {post.title}
         </h1>
-        {/* 날짜나 카테고리 정보 등을 여기에 추가하면 더 좋습니다 */}
+        <ShareButtons title={post.title} description={post.description} />
       </header>
 
       <article

@@ -57,7 +57,7 @@ export default function TableOfContents() {
   if (headings.length === 0) return null;
 
   return (
-    <nav className="hidden xl:block fixed top-24 right-8 w-64 max-h-[calc(100vh-200px)] overflow-y-auto">
+    <nav className="hidden 2xl:block fixed top-24 left-[calc(50%+34rem)] w-64 max-h-[calc(100vh-200px)] overflow-y-auto">
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
           <List className="w-4 h-4" />
