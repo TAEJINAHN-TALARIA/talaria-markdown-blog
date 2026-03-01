@@ -32,7 +32,10 @@ export default function TableOfContents() {
       };
     });
 
-    setHeadings(items);
+    // requestAnimationFrame으로 setState를 비동기로 실행
+    requestAnimationFrame(() => {
+      setHeadings(items);
+    });
 
     // Intersection Observer로 현재 보이는 섹션 추적
     const observer = new IntersectionObserver(
