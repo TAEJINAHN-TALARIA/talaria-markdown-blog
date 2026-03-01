@@ -11,31 +11,42 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// 초기 테마를 서버/클라이언트 모두에서 안전하게 가져오기
+function getInitialTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+
+  const savedTheme = localStorage.getItem("theme") as Theme | null;
+  if (savedTheme) return savedTheme;
+
+  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return prefersDark ? "dark" : "light";
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const [mounted, setMounted] = useState(false);
 
+  // 마운트 시 한 번만 실행
   useEffect(() => {
     setMounted(true);
-    // 로컬스토리지에서 저장된 테마 불러오기
+
+    // DOM 클래스 동기화
     const savedTheme = localStorage.getItem("theme") as Theme | null;
     if (savedTheme) {
-      setTheme(savedTheme);
       document.documentElement.classList.toggle("dark", savedTheme === "dark");
     } else {
-      // 시스템 설정 따르기
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const initialTheme = prefersDark ? "dark" : "light";
-      setTheme(initialTheme);
       document.documentElement.classList.toggle("dark", prefersDark);
     }
   }, []);
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    setTheme((prevTheme) => {
+      const newTheme = prevTheme === "light" ? "dark" : "light";
+      localStorage.setItem("theme", newTheme);
+      document.documentElement.classList.toggle("dark", newTheme === "dark");
+      return newTheme;
+    });
   };
 
   // 마운트 전에는 아무것도 렌더링하지 않음 (깜빡임 방지)
