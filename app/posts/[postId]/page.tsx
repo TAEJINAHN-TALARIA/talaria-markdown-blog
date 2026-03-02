@@ -3,14 +3,16 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import ReactMarkdown from "react-markdown";
 import matter from "gray-matter";
+import dynamic from "next/dynamic";
 import PostNavigation from "@/components/PostNavigation";
 import ZoomableImage from "@/components/ZoomableImage";
 import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
-import Comments from "@/components/Comments";
-import TableOfContents from "@/components/TableOfContents";
 import CodeBlock from "@/components/CodeBlock";
 import ShareButtons from "@/components/ShareButtons";
+
+const Comments = dynamic(() => import("@/components/Comments"));
+const TableOfContents = dynamic(() => import("@/components/TableOfContents"));
 
 const STORAGE_BUCKET_NAME = "posts";
 
@@ -60,7 +62,7 @@ export async function generateMetadata({
 
   const { data: post } = await supabase
     .from("meta_info")
-    .select("title, description") // 필요한 필드만 조회
+    .select("title, description, thumbnail_url")
     .eq("slug", postId)
     .single();
 
@@ -70,13 +72,32 @@ export async function generateMetadata({
     };
   }
 
+  const ogImage = post.thumbnail_url
+    ? [
+        {
+          url: post.thumbnail_url,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ]
+    : [];
+
   return {
     title: post.title,
     description: post.description || `${post.title} - 블로그 글`,
     openGraph: {
       title: post.title,
       description: post.description || "",
-      // images: [post.thumbnail_url], // 썸네일이 있다면 추가
+      images: ogImage,
+      type: "article",
+      url: `https://talaria-markdown-blog.vercel.app/posts/${postId}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description || "",
+      images: ogImage.length > 0 ? [ogImage[0].url] : [],
     },
   };
 }
@@ -127,15 +148,17 @@ export default async function PostPage({
     "@type": "BlogPosting",
     headline: post.title,
     description: post.description || post.title,
+    image: post.thumbnail_url || undefined,
     datePublished: post.created_at,
     dateModified: post.updated_at || post.created_at,
+    url: `https://talaria-markdown-blog.vercel.app/posts/${postId}`,
     mainEntityOfPage: {
       "@type": "WebPage",
       "@id": `https://talaria-markdown-blog.vercel.app/posts/${postId}`,
     },
     author: {
       "@type": "Person",
-      name: "Talaria", // 본인 이름이나 닉네임으로 변경
+      name: "Talaria",
     },
   };
 
@@ -166,7 +189,7 @@ export default async function PostPage({
           // [추가] remarkPlugins 속성에 플러그인 추가
           remarkPlugins={[remarkGfm, remarkUnwrapImages]}
           components={{
-            code({ node, inline, className, children, ...props }: any) {
+            code({ inline, className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || "");
               return !inline && match ? (
                 <CodeBlock language={match[1]}>
