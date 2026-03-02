@@ -10,6 +10,7 @@ import remarkUnwrapImages from "remark-unwrap-images";
 import remarkGfm from "remark-gfm";
 import CodeBlock from "@/components/CodeBlock";
 import ShareButtons from "@/components/ShareButtons";
+import { ReactNode } from "react";
 
 const Comments = dynamic(() => import("@/components/Comments"));
 const TableOfContents = dynamic(() => import("@/components/TableOfContents"));
@@ -189,7 +190,16 @@ export default async function PostPage({
           // [추가] remarkPlugins 속성에 플러그인 추가
           remarkPlugins={[remarkGfm, remarkUnwrapImages]}
           components={{
-            code({ inline, className, children, ...props }) {
+            code({
+              inline,
+              className,
+              children,
+              ...props
+            }: {
+              inline?: boolean;
+              className?: string;
+              children?: ReactNode;
+            }) {
               const match = /language-(\w+)/.exec(className || "");
               return !inline && match ? (
                 <CodeBlock language={match[1]}>
