@@ -77,6 +77,12 @@ export default function HomeClient({
   const filteredAndSortedPosts = useMemo(() => {
     let result = [...initialPosts];
 
+    // 메인 화면(필터 없음)에서는 일기(category_no === 3) 제외
+    const isMainView = !currentCategory && !currentSeries && !currentSearchTerm;
+    if (isMainView) {
+      result = result.filter((p) => p.category_no !== 3);
+    }
+
     if (currentSearchTerm) {
       result = result.filter(
         (p) =>
