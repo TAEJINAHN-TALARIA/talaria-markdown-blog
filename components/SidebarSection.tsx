@@ -14,7 +14,7 @@ export default function SidebarSection({
   return (
     <details
       className="group mt-5 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-700"
-      defaultOpen={defaultOpen}
+      open={defaultOpen || undefined}
     >
       <summary className="flex justify-between items-center p-4 font-medium cursor-pointer list-none hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-gray-800 dark:text-gray-100">
         <span>{title}</span>
