@@ -19,11 +19,14 @@ export default function TableOfContents() {
     if (!article) return;
 
     const headingElements = article.querySelectorAll("h2, h3, h4");
+    const idCount: Record<string, number> = {};
     const items: TocItem[] = Array.from(headingElements).map((heading) => {
-      // ID가 없으면 생성
       if (!heading.id) {
-        heading.id =
+        const base =
           heading.textContent?.replace(/\s+/g, "-").toLowerCase() || "";
+        const count = idCount[base] ?? 0;
+        idCount[base] = count + 1;
+        heading.id = count === 0 ? base : `${base}-${count}`;
       }
       return {
         id: heading.id,

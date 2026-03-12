@@ -1,10 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 
-// Props 타입을 별도로 정의하거나 인라인으로 작성할 수 있습니다.
 interface SidebarSectionProps {
   title: string;
   children: React.ReactNode;
-  defaultOpen?: boolean; // 기본값이 있으므로 선택적(optional) 속성으로 ?를 붙입니다.
+  defaultOpen?: boolean;
 }
 
 export default function SidebarSection({
@@ -12,15 +11,10 @@ export default function SidebarSection({
   children,
   defaultOpen = true,
 }: SidebarSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
   return (
     <details
       className="group mt-5 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-700"
-      open={isOpen}
-      onToggle={(e) =>
-        setIsOpen((e.currentTarget as HTMLDetailsElement).open)
-      }
+      open={defaultOpen || undefined}
     >
       <summary className="flex justify-between items-center p-4 font-medium cursor-pointer list-none hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-gray-800 dark:text-gray-100">
         <span>{title}</span>
