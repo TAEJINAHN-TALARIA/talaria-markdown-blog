@@ -13,4 +13,5 @@ export interface BlogPost {
   series_seq_no: number | null;
   category_name: string | null;
   series_name: string | null;
+  thumbnail_url: string | null;
 }
