@@ -75,9 +75,6 @@ export default function PostForm({
   const [newCategoryName, setNewCategoryName] = useState(
     categoryChoice === "new" ? (post?.category_name ?? "") : "",
   );
-  const [newCategoryNo, setNewCategoryNo] = useState(
-    categoryChoice === "new" ? (post?.category_no?.toString() ?? "") : "",
-  );
 
   // Series state
   const [seriesChoice, setSeriesChoice] = useState(() =>
@@ -87,14 +84,6 @@ export default function PostForm({
     getInitialSeriesChoice(post, seriesOptions) === "new"
       ? (post?.series_name ?? "")
       : "",
-  );
-  const [newSeriesNo, setNewSeriesNo] = useState(
-    getInitialSeriesChoice(post, seriesOptions) === "new"
-      ? (post?.series_no?.toString() ?? "")
-      : "",
-  );
-  const [seriesSeqNo, setSeriesSeqNo] = useState(
-    post?.series_seq_no?.toString() ?? "",
   );
 
   const [thumbnailUrl, setThumbnailUrl] = useState(
@@ -111,30 +100,13 @@ export default function PostForm({
     setCategoryChoice(value);
     if (value !== "new") {
       setNewCategoryName("");
-      setNewCategoryNo("");
     }
   }
 
   function handleSeriesChange(value: string) {
     setSeriesChoice(value);
-    if (value === "") {
-      setSeriesSeqNo("");
+    if (value !== "new") {
       setNewSeriesName("");
-      setNewSeriesNo("");
-    } else if (value === "new") {
-      setNewSeriesName("");
-      setNewSeriesNo("");
-      setSeriesSeqNo("");
-    } else {
-      // Auto-fill next seq_no in create mode
-      if (mode === "create") {
-        const selected = seriesOptions.find(
-          (s) => s.series_no === parseInt(value),
-        );
-        if (selected) {
-          setSeriesSeqNo(String(selected.max_seq_no + 1));
-        }
-      }
     }
   }
 
@@ -144,7 +116,9 @@ export default function PostForm({
     let resolvedCategoryNo: number | null = null;
     if (categoryChoice === "new") {
       resolvedCategoryName = newCategoryName;
-      resolvedCategoryNo = newCategoryNo ? parseInt(newCategoryNo) : null;
+      resolvedCategoryNo =
+        post?.category_no ??
+        Math.max(0, ...categories.map((c) => c.category_no)) + 1;
     } else if (categoryChoice !== "") {
       const found = categories.find(
         (c) => c.category_no === parseInt(categoryChoice),
@@ -158,9 +132,13 @@ export default function PostForm({
     // Resolve series
     let resolvedSeriesName = "";
     let resolvedSeriesNo: number | null = null;
+    let resolvedSeriesSeqNo: number | null = null;
     if (seriesChoice === "new") {
       resolvedSeriesName = newSeriesName;
-      resolvedSeriesNo = newSeriesNo ? parseInt(newSeriesNo) : null;
+      resolvedSeriesNo =
+        post?.series_no ??
+        Math.max(0, ...seriesOptions.map((s) => s.series_no)) + 1;
+      resolvedSeriesSeqNo = 1;
     } else if (seriesChoice !== "") {
       const found = seriesOptions.find(
         (s) => s.series_no === parseInt(seriesChoice),
@@ -168,6 +146,11 @@ export default function PostForm({
       if (found) {
         resolvedSeriesName = found.series_name;
         resolvedSeriesNo = found.series_no;
+        if (mode === "edit" && post?.series_no === found.series_no) {
+          resolvedSeriesSeqNo = post?.series_seq_no ?? found.max_seq_no + 1;
+        } else {
+          resolvedSeriesSeqNo = found.max_seq_no + 1;
+        }
       }
     }
 
@@ -179,7 +162,7 @@ export default function PostForm({
       category_no: resolvedCategoryNo,
       series_name: resolvedSeriesName,
       series_no: resolvedSeriesNo,
-      series_seq_no: seriesSeqNo ? parseInt(seriesSeqNo) : null,
+      series_seq_no: resolvedSeriesSeqNo,
       thumbnail_url: thumbnailUrl,
       open: isOpen,
       content,
@@ -209,8 +192,6 @@ export default function PostForm({
       }
     });
   }
-
-  const showSeriesSeqNo = seriesChoice !== "";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -292,25 +273,14 @@ export default function PostForm({
           </select>
 
           {categoryChoice === "new" && (
-            <div className="grid grid-cols-3 gap-3 mt-2">
-              <div className="col-span-2">
-                <input
-                  type="text"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                  className={inputClass}
-                  placeholder="카테고리 이름"
-                />
-              </div>
-              <div>
-                <input
-                  type="number"
-                  value={newCategoryNo}
-                  onChange={(e) => setNewCategoryNo(e.target.value)}
-                  className={inputClass}
-                  placeholder="번호 (예: 4)"
-                />
-              </div>
+            <div className="mt-2">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                className={inputClass}
+                placeholder="카테고리 이름"
+              />
             </div>
           )}
         </div>
@@ -333,40 +303,13 @@ export default function PostForm({
           </select>
 
           {seriesChoice === "new" && (
-            <div className="grid grid-cols-3 gap-3 mt-2">
-              <div className="col-span-2">
-                <input
-                  type="text"
-                  value={newSeriesName}
-                  onChange={(e) => setNewSeriesName(e.target.value)}
-                  className={inputClass}
-                  placeholder="시리즈 이름"
-                />
-              </div>
-              <div>
-                <input
-                  type="number"
-                  value={newSeriesNo}
-                  onChange={(e) => setNewSeriesNo(e.target.value)}
-                  className={inputClass}
-                  placeholder="번호 (예: 3)"
-                />
-              </div>
-            </div>
-          )}
-
-          {showSeriesSeqNo && (
             <div className="mt-2">
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                시리즈 내 순서
-              </label>
               <input
-                type="number"
-                value={seriesSeqNo}
-                onChange={(e) => setSeriesSeqNo(e.target.value)}
-                className={`${inputClass} w-32`}
-                placeholder="1"
-                min={1}
+                type="text"
+                value={newSeriesName}
+                onChange={(e) => setNewSeriesName(e.target.value)}
+                className={inputClass}
+                placeholder="시리즈 이름"
               />
             </div>
           )}
