@@ -19,6 +19,18 @@ export default function AdminNav({ email }: { email: string }) {
             + New Post
           </Link>
           <Link
+            href="/admin/categories"
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Categories
+          </Link>
+          <Link
+            href="/admin/series"
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Series
+          </Link>
+          <Link
             href="/"
             className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >

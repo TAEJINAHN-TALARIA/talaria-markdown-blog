@@ -6,46 +6,97 @@ import MarkdownEditor from "./MarkdownEditor";
 import { createPost, updatePost, type PostData } from "@/app/admin/actions";
 import { BlogPost } from "@/types";
 
+export interface CategoryOption {
+  category_no: number;
+  category_name: string;
+}
+
+export interface SeriesOption {
+  series_no: number;
+  series_name: string;
+  max_seq_no: number;
+}
+
 interface Props {
   post?: BlogPost & { content: string };
   mode: "create" | "edit";
+  categories?: CategoryOption[];
+  seriesOptions?: SeriesOption[];
 }
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9가-힣\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
-}
 
 const inputClass =
   "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
 const labelClass =
   "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
+const selectClass =
+  "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
 
-export default function PostForm({ post, mode }: Props) {
+function getInitialCategoryChoice(
+  post: (BlogPost & { content: string }) | undefined,
+  categories: CategoryOption[],
+): string {
+  if (!post?.category_no) return "";
+  if (categories.some((c) => c.category_no === post.category_no))
+    return String(post.category_no);
+  return "new";
+}
+
+function getInitialSeriesChoice(
+  post: (BlogPost & { content: string }) | undefined,
+  seriesOptions: SeriesOption[],
+): string {
+  if (!post?.series_no) return "";
+  if (seriesOptions.some((s) => s.series_no === post.series_no))
+    return String(post.series_no);
+  return "new";
+}
+
+export default function PostForm({
+  post,
+  mode,
+  categories = [],
+  seriesOptions = [],
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
   const [title, setTitle] = useState(post?.title ?? "");
-  const [slug, setSlug] = useState(post?.slug ?? "");
+  const [slug, setSlug] = useState(
+    () => post?.slug ?? crypto.randomUUID(),
+  );
   const [description, setDescription] = useState(post?.description ?? "");
-  const [categoryName, setCategoryName] = useState(
-    post?.category_name ?? "",
+
+  // Category state
+  const [categoryChoice, setCategoryChoice] = useState(() =>
+    getInitialCategoryChoice(post, categories),
   );
-  const [categoryNo, setCategoryNo] = useState(
-    post?.category_no?.toString() ?? "",
+  const [newCategoryName, setNewCategoryName] = useState(
+    categoryChoice === "new" ? (post?.category_name ?? "") : "",
   );
-  const [seriesName, setSeriesName] = useState(post?.series_name ?? "");
-  const [seriesNo, setSeriesNo] = useState(
-    post?.series_no?.toString() ?? "",
+  const [newCategoryNo, setNewCategoryNo] = useState(
+    categoryChoice === "new" ? (post?.category_no?.toString() ?? "") : "",
+  );
+
+  // Series state
+  const [seriesChoice, setSeriesChoice] = useState(() =>
+    getInitialSeriesChoice(post, seriesOptions),
+  );
+  const [newSeriesName, setNewSeriesName] = useState(
+    getInitialSeriesChoice(post, seriesOptions) === "new"
+      ? (post?.series_name ?? "")
+      : "",
+  );
+  const [newSeriesNo, setNewSeriesNo] = useState(
+    getInitialSeriesChoice(post, seriesOptions) === "new"
+      ? (post?.series_no?.toString() ?? "")
+      : "",
   );
   const [seriesSeqNo, setSeriesSeqNo] = useState(
     post?.series_seq_no?.toString() ?? "",
   );
+
   const [thumbnailUrl, setThumbnailUrl] = useState(
     post?.thumbnail_url ?? "",
   );
@@ -54,7 +105,85 @@ export default function PostForm({ post, mode }: Props) {
 
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setTitle(e.target.value);
-    if (mode === "create") setSlug(slugify(e.target.value));
+  }
+
+  function handleCategoryChange(value: string) {
+    setCategoryChoice(value);
+    if (value !== "new") {
+      setNewCategoryName("");
+      setNewCategoryNo("");
+    }
+  }
+
+  function handleSeriesChange(value: string) {
+    setSeriesChoice(value);
+    if (value === "") {
+      setSeriesSeqNo("");
+      setNewSeriesName("");
+      setNewSeriesNo("");
+    } else if (value === "new") {
+      setNewSeriesName("");
+      setNewSeriesNo("");
+      setSeriesSeqNo("");
+    } else {
+      // Auto-fill next seq_no in create mode
+      if (mode === "create") {
+        const selected = seriesOptions.find(
+          (s) => s.series_no === parseInt(value),
+        );
+        if (selected) {
+          setSeriesSeqNo(String(selected.max_seq_no + 1));
+        }
+      }
+    }
+  }
+
+  function buildPostData(): PostData {
+    // Resolve category
+    let resolvedCategoryName = "";
+    let resolvedCategoryNo: number | null = null;
+    if (categoryChoice === "new") {
+      resolvedCategoryName = newCategoryName;
+      resolvedCategoryNo = newCategoryNo ? parseInt(newCategoryNo) : null;
+    } else if (categoryChoice !== "") {
+      const found = categories.find(
+        (c) => c.category_no === parseInt(categoryChoice),
+      );
+      if (found) {
+        resolvedCategoryName = found.category_name;
+        resolvedCategoryNo = found.category_no;
+      }
+    }
+
+    // Resolve series
+    let resolvedSeriesName = "";
+    let resolvedSeriesNo: number | null = null;
+    if (seriesChoice === "new") {
+      resolvedSeriesName = newSeriesName;
+      resolvedSeriesNo = newSeriesNo ? parseInt(newSeriesNo) : null;
+    } else if (seriesChoice !== "") {
+      const found = seriesOptions.find(
+        (s) => s.series_no === parseInt(seriesChoice),
+      );
+      if (found) {
+        resolvedSeriesName = found.series_name;
+        resolvedSeriesNo = found.series_no;
+      }
+    }
+
+    return {
+      title,
+      slug,
+      description,
+      category_name: resolvedCategoryName,
+      category_no: resolvedCategoryNo,
+      series_name: resolvedSeriesName,
+      series_no: resolvedSeriesNo,
+      series_seq_no: seriesSeqNo ? parseInt(seriesSeqNo) : null,
+      thumbnail_url: thumbnailUrl,
+      open: isOpen,
+      content,
+    };
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -65,21 +194,8 @@ export default function PostForm({ post, mode }: Props) {
     }
     setError("");
 
-    const data: PostData = {
-      title,
-      slug,
-      description,
-      category_name: categoryName,
-      category_no: categoryNo ? parseInt(categoryNo) : null,
-      series_name: seriesName,
-      series_no: seriesNo ? parseInt(seriesNo) : null,
-      series_seq_no: seriesSeqNo ? parseInt(seriesSeqNo) : null,
-      thumbnail_url: thumbnailUrl,
-      open: isOpen,
-      content,
-    };
-
     startTransition(async () => {
+      const data = buildPostData();
       const result =
         mode === "create"
           ? await createPost(data)
@@ -93,6 +209,8 @@ export default function PostForm({ post, mode }: Props) {
       }
     });
   }
+
+  const showSeriesSeqNo = seriesChoice !== "";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -121,14 +239,25 @@ export default function PostForm({ post, mode }: Props) {
           <label className={labelClass}>
             Slug <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            required
-            className={`${inputClass} font-mono`}
-            placeholder="post-url-slug"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              required
+              className={`${inputClass} font-mono`}
+              placeholder="post-url-slug"
+            />
+            {mode === "create" && (
+              <button
+                type="button"
+                onClick={() => setSlug(crypto.randomUUID())}
+                className="flex-shrink-0 px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                재생성
+              </button>
+            )}
+          </div>
           <p className="mt-1 text-xs text-gray-400">
             URL: /posts/{slug || "..."}
           </p>
@@ -145,62 +274,105 @@ export default function PostForm({ post, mode }: Props) {
           />
         </div>
 
-        <div>
-          <label className={labelClass}>카테고리 이름</label>
-          <input
-            type="text"
-            value={categoryName}
-            onChange={(e) => setCategoryName(e.target.value)}
-            className={inputClass}
-            placeholder="예: Development"
-          />
+        {/* Category */}
+        <div className="md:col-span-2">
+          <label className={labelClass}>카테고리</label>
+          <select
+            value={categoryChoice}
+            onChange={(e) => handleCategoryChange(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">-- 카테고리 없음 --</option>
+            {categories.map((c) => (
+              <option key={c.category_no} value={String(c.category_no)}>
+                {c.category_name}
+              </option>
+            ))}
+            <option value="new">+ 새 카테고리 추가</option>
+          </select>
+
+          {categoryChoice === "new" && (
+            <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="col-span-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className={inputClass}
+                  placeholder="카테고리 이름"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  value={newCategoryNo}
+                  onChange={(e) => setNewCategoryNo(e.target.value)}
+                  className={inputClass}
+                  placeholder="번호 (예: 4)"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
-        <div>
-          <label className={labelClass}>카테고리 번호</label>
-          <input
-            type="number"
-            value={categoryNo}
-            onChange={(e) => setCategoryNo(e.target.value)}
-            className={inputClass}
-            placeholder="1"
-          />
+        {/* Series */}
+        <div className="md:col-span-2">
+          <label className={labelClass}>시리즈</label>
+          <select
+            value={seriesChoice}
+            onChange={(e) => handleSeriesChange(e.target.value)}
+            className={selectClass}
+          >
+            <option value="">-- 시리즈 없음 --</option>
+            {seriesOptions.map((s) => (
+              <option key={s.series_no} value={String(s.series_no)}>
+                {s.series_name} ({s.max_seq_no}편)
+              </option>
+            ))}
+            <option value="new">+ 새 시리즈 추가</option>
+          </select>
+
+          {seriesChoice === "new" && (
+            <div className="grid grid-cols-3 gap-3 mt-2">
+              <div className="col-span-2">
+                <input
+                  type="text"
+                  value={newSeriesName}
+                  onChange={(e) => setNewSeriesName(e.target.value)}
+                  className={inputClass}
+                  placeholder="시리즈 이름"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  value={newSeriesNo}
+                  onChange={(e) => setNewSeriesNo(e.target.value)}
+                  className={inputClass}
+                  placeholder="번호 (예: 3)"
+                />
+              </div>
+            </div>
+          )}
+
+          {showSeriesSeqNo && (
+            <div className="mt-2">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                시리즈 내 순서
+              </label>
+              <input
+                type="number"
+                value={seriesSeqNo}
+                onChange={(e) => setSeriesSeqNo(e.target.value)}
+                className={`${inputClass} w-32`}
+                placeholder="1"
+                min={1}
+              />
+            </div>
+          )}
         </div>
 
-        <div>
-          <label className={labelClass}>시리즈 이름</label>
-          <input
-            type="text"
-            value={seriesName}
-            onChange={(e) => setSeriesName(e.target.value)}
-            className={inputClass}
-            placeholder="예: React Series"
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>시리즈 번호</label>
-          <input
-            type="number"
-            value={seriesNo}
-            onChange={(e) => setSeriesNo(e.target.value)}
-            className={inputClass}
-            placeholder="1"
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>시리즈 순서</label>
-          <input
-            type="number"
-            value={seriesSeqNo}
-            onChange={(e) => setSeriesSeqNo(e.target.value)}
-            className={inputClass}
-            placeholder="1"
-          />
-        </div>
-
-        <div>
+        <div className="md:col-span-2">
           <label className={labelClass}>썸네일 URL</label>
           <input
             type="url"

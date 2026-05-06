@@ -164,3 +164,79 @@ export async function signOut() {
   await supabase.auth.signOut();
   redirect("/admin/login");
 }
+
+export async function renameCategory(categoryNo: number, newName: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("meta_info")
+    .update({ category_name: newName })
+    .eq("category_no", categoryNo);
+
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/categories");
+  return { success: true };
+}
+
+export async function deleteCategory(categoryNo: number) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("meta_info")
+    .update({ category_name: null, category_no: null })
+    .eq("category_no", categoryNo);
+
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/categories");
+  return { success: true };
+}
+
+export async function renameSeries(seriesNo: number, newName: string) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("meta_info")
+    .update({ series_name: newName })
+    .eq("series_no", seriesNo);
+
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/series");
+  return { success: true };
+}
+
+export async function deleteSeries(seriesNo: number) {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("meta_info")
+    .update({ series_name: null, series_no: null, series_seq_no: null })
+    .eq("series_no", seriesNo);
+
+  if (error) return { error: error.message };
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/series");
+  return { success: true };
+}
+
+export async function updateSeriesOrder(
+  updates: { id: string; series_seq_no: number }[],
+) {
+  const supabase = createAdminClient();
+
+  const results = await Promise.all(
+    updates.map(({ id, series_seq_no }) =>
+      supabase.from("meta_info").update({ series_seq_no }).eq("id", id),
+    ),
+  );
+
+  const firstError = results.find((r) => r.error);
+  if (firstError?.error) return { error: firstError.error.message };
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+  revalidatePath("/admin/series");
+  return { success: true };
+}
