@@ -74,8 +74,8 @@ export default function MarkdownEditor({ value, onChange }: Props) {
       formData.append("file", file);
       const result = await uploadImage(formData);
 
-      if (result.error) {
-        alert("이미지 업로드 실패: " + result.error);
+      if ("error" in result) {
+        alert("이미지 업로드 실패: " + result.error!);
         return;
       }
 

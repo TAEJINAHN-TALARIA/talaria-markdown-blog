@@ -8,23 +8,27 @@ export const dynamic = "force-dynamic";
 
 export default async function SeriesPage() {
   const supabase = createAdminClient();
-  const { data: posts } = await supabase
-    .from("meta_info")
-    .select("*")
-    .not("series_no", "is", null)
-    .order("series_seq_no", { ascending: true });
+
+  const [{ data: seriesRows }, { data: posts }] = await Promise.all([
+    supabase.from("series").select("series_no, series_name").order("series_no"),
+    supabase
+      .from("meta_info")
+      .select("*")
+      .not("series_no", "is", null)
+      .order("series_seq_no", { ascending: true }),
+  ]);
 
   const seriesMap = new Map<number, SeriesInfo>();
+  for (const s of seriesRows ?? []) {
+    seriesMap.set(s.series_no, {
+      series_no: s.series_no,
+      series_name: s.series_name,
+      posts: [],
+    });
+  }
   for (const post of (posts ?? []) as BlogPost[]) {
     if (post.series_no == null) continue;
-    if (!seriesMap.has(post.series_no)) {
-      seriesMap.set(post.series_no, {
-        series_no: post.series_no,
-        series_name: post.series_name ?? String(post.series_no),
-        posts: [],
-      });
-    }
-    seriesMap.get(post.series_no)!.posts.push(post);
+    seriesMap.get(post.series_no)?.posts.push(post);
   }
 
   const seriesList = Array.from(seriesMap.values()).sort(

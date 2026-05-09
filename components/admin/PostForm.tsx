@@ -24,13 +24,22 @@ interface Props {
   seriesOptions?: SeriesOption[];
 }
 
-
 const inputClass =
   "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
 const labelClass =
   "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-const selectClass =
-  "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm";
+
+function generateSlug(title: string): string {
+  const generated = title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  return generated || crypto.randomUUID();
+}
 
 function getInitialCategoryChoice(
   post: (BlogPost & { content: string }) | undefined,
@@ -63,12 +72,12 @@ export default function PostForm({
   const [error, setError] = useState("");
 
   const [title, setTitle] = useState(post?.title ?? "");
-  const [slug, setSlug] = useState(
-    () => post?.slug ?? crypto.randomUUID(),
+  const [slug, setSlug] = useState(() => post?.slug ?? "");
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(
+    mode === "edit",
   );
   const [description, setDescription] = useState(post?.description ?? "");
 
-  // Category state
   const [categoryChoice, setCategoryChoice] = useState(() =>
     getInitialCategoryChoice(post, categories),
   );
@@ -76,7 +85,6 @@ export default function PostForm({
     categoryChoice === "new" ? (post?.category_name ?? "") : "",
   );
 
-  // Series state
   const [seriesChoice, setSeriesChoice] = useState(() =>
     getInitialSeriesChoice(post, seriesOptions),
   );
@@ -86,14 +94,15 @@ export default function PostForm({
       : "",
   );
 
-  const [thumbnailUrl, setThumbnailUrl] = useState(
-    post?.thumbnail_url ?? "",
-  );
   const [isOpen, setIsOpen] = useState(post?.open ?? false);
   const [content, setContent] = useState(post?.content ?? "");
 
   function handleTitleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setTitle(e.target.value);
+    const newTitle = e.target.value;
+    setTitle(newTitle);
+    if (!slugManuallyEdited) {
+      setSlug(newTitle ? generateSlug(newTitle) : "");
+    }
   }
 
   function handleCategoryChange(value: string) {
@@ -111,45 +120,30 @@ export default function PostForm({
   }
 
   function buildPostData(): PostData {
-    // Resolve category
-    let resolvedCategoryName = "";
-    let resolvedCategoryNo: number | null = null;
+    let categoryNo: number | null = null;
+    let categoryName = "";
     if (categoryChoice === "new") {
-      resolvedCategoryName = newCategoryName;
-      resolvedCategoryNo =
-        post?.category_no ??
-        Math.max(0, ...categories.map((c) => c.category_no)) + 1;
+      categoryName = newCategoryName;
     } else if (categoryChoice !== "") {
-      const found = categories.find(
-        (c) => c.category_no === parseInt(categoryChoice),
-      );
-      if (found) {
-        resolvedCategoryName = found.category_name;
-        resolvedCategoryNo = found.category_no;
-      }
+      categoryNo = parseInt(categoryChoice);
     }
 
-    // Resolve series
-    let resolvedSeriesName = "";
-    let resolvedSeriesNo: number | null = null;
-    let resolvedSeriesSeqNo: number | null = null;
+    let seriesNo: number | null = null;
+    let seriesName = "";
+    let seriesSeqNo: number | null = null;
     if (seriesChoice === "new") {
-      resolvedSeriesName = newSeriesName;
-      resolvedSeriesNo =
-        post?.series_no ??
-        Math.max(0, ...seriesOptions.map((s) => s.series_no)) + 1;
-      resolvedSeriesSeqNo = 1;
+      seriesName = newSeriesName;
+      seriesSeqNo = 1;
     } else if (seriesChoice !== "") {
       const found = seriesOptions.find(
         (s) => s.series_no === parseInt(seriesChoice),
       );
       if (found) {
-        resolvedSeriesName = found.series_name;
-        resolvedSeriesNo = found.series_no;
+        seriesNo = found.series_no;
         if (mode === "edit" && post?.series_no === found.series_no) {
-          resolvedSeriesSeqNo = post?.series_seq_no ?? found.max_seq_no + 1;
+          seriesSeqNo = post?.series_seq_no ?? found.max_seq_no + 1;
         } else {
-          resolvedSeriesSeqNo = found.max_seq_no + 1;
+          seriesSeqNo = found.max_seq_no + 1;
         }
       }
     }
@@ -158,12 +152,11 @@ export default function PostForm({
       title,
       slug,
       description,
-      category_name: resolvedCategoryName,
-      category_no: resolvedCategoryNo,
-      series_name: resolvedSeriesName,
-      series_no: resolvedSeriesNo,
-      series_seq_no: resolvedSeriesSeqNo,
-      thumbnail_url: thumbnailUrl,
+      category_name: categoryName,
+      category_no: categoryNo,
+      series_name: seriesName,
+      series_no: seriesNo,
+      series_seq_no: seriesSeqNo,
       open: isOpen,
       content,
     };
@@ -184,8 +177,8 @@ export default function PostForm({
           ? await createPost(data)
           : await updatePost(post!.id, data, post!.file_path);
 
-      if (result.error) {
-        setError(result.error);
+      if ("error" in result) {
+        setError(result.error!);
       } else {
         router.push("/admin");
         router.refresh();
@@ -224,7 +217,10 @@ export default function PostForm({
             <input
               type="text"
               value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+              onChange={(e) => {
+                setSlug(e.target.value);
+                setSlugManuallyEdited(true);
+              }}
               required
               className={`${inputClass} font-mono`}
               placeholder="post-url-slug"
@@ -232,7 +228,10 @@ export default function PostForm({
             {mode === "create" && (
               <button
                 type="button"
-                onClick={() => setSlug(crypto.randomUUID())}
+                onClick={() => {
+                  setSlug(generateSlug(title));
+                  setSlugManuallyEdited(false);
+                }}
                 className="flex-shrink-0 px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 재생성
@@ -261,7 +260,7 @@ export default function PostForm({
           <select
             value={categoryChoice}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className={selectClass}
+            className={inputClass}
           >
             <option value="">-- 카테고리 없음 --</option>
             {categories.map((c) => (
@@ -291,7 +290,7 @@ export default function PostForm({
           <select
             value={seriesChoice}
             onChange={(e) => handleSeriesChange(e.target.value)}
-            className={selectClass}
+            className={inputClass}
           >
             <option value="">-- 시리즈 없음 --</option>
             {seriesOptions.map((s) => (
@@ -313,17 +312,6 @@ export default function PostForm({
               />
             </div>
           )}
-        </div>
-
-        <div className="md:col-span-2">
-          <label className={labelClass}>썸네일 URL</label>
-          <input
-            type="url"
-            value={thumbnailUrl}
-            onChange={(e) => setThumbnailUrl(e.target.value)}
-            className={inputClass}
-            placeholder="https://..."
-          />
         </div>
 
         <div className="md:col-span-2 flex items-center gap-3">

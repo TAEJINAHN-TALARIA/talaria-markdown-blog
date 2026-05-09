@@ -37,8 +37,8 @@ export default function CategoryManager({
     setError("");
     startTransition(async () => {
       const result = await renameCategory(categoryNo, editValue.trim());
-      if (result.error) {
-        setError(result.error);
+      if ("error" in result) {
+        setError(result.error!);
         return;
       }
       setCategories((prev) =>
@@ -56,8 +56,8 @@ export default function CategoryManager({
     setError("");
     startTransition(async () => {
       const result = await deleteCategory(categoryNo);
-      if (result.error) {
-        setError(result.error);
+      if ("error" in result) {
+        setError(result.error!);
         setDeletingNo(null);
         return;
       }

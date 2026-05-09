@@ -2,7 +2,11 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { renameSeries, deleteSeries, updateSeriesOrder } from "@/app/admin/actions";
+import {
+  renameSeries,
+  deleteSeries,
+  updateSeriesOrder,
+} from "@/app/admin/actions";
 import { BlogPost } from "@/types";
 
 export interface SeriesInfo {
@@ -21,7 +25,10 @@ export default function SeriesManager({
   const [editValue, setEditValue] = useState("");
   const [deletingNo, setDeletingNo] = useState<number | null>(null);
   const [expandedNo, setExpandedNo] = useState<number | null>(
-    initialSeries.length === 1 ? initialSeries[0]?.series_no ?? null : null,
+    initialSeries.length === 1 ? (initialSeries[0]?.series_no ?? null) : null,
+  );
+  const [unsavedSeriesNos, setUnsavedSeriesNos] = useState<Set<number>>(
+    new Set(),
   );
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -42,8 +49,8 @@ export default function SeriesManager({
     setError("");
     startTransition(async () => {
       const result = await renameSeries(seriesNo, editValue.trim());
-      if (result.error) {
-        setError(result.error);
+      if ("error" in result) {
+        setError(result.error!);
         return;
       }
       setSeriesList((prev) =>
@@ -61,12 +68,17 @@ export default function SeriesManager({
     setError("");
     startTransition(async () => {
       const result = await deleteSeries(seriesNo);
-      if (result.error) {
-        setError(result.error);
+      if ("error" in result) {
+        setError(result.error!);
         setDeletingNo(null);
         return;
       }
       setSeriesList((prev) => prev.filter((s) => s.series_no !== seriesNo));
+      setUnsavedSeriesNos((prev) => {
+        const next = new Set(prev);
+        next.delete(seriesNo);
+        return next;
+      });
       setDeletingNo(null);
       if (expandedNo === seriesNo) setExpandedNo(null);
     });
@@ -85,6 +97,7 @@ export default function SeriesManager({
         return { ...s, posts };
       }),
     );
+    setUnsavedSeriesNos((prev) => new Set(prev).add(seriesNo));
   }
 
   function saveOrder(seriesNo: number) {
@@ -94,13 +107,20 @@ export default function SeriesManager({
       id: post.id,
       series_seq_no: i + 1,
     }));
+    const snapshot = seriesList;
     setError("");
     startTransition(async () => {
       const result = await updateSeriesOrder(updates);
-      if (result.error) {
-        setError(result.error);
+      if ("error" in result) {
+        setError(result.error!);
+        setSeriesList(snapshot);
         return;
       }
+      setUnsavedSeriesNos((prev) => {
+        const next = new Set(prev);
+        next.delete(seriesNo);
+        return next;
+      });
       setSeriesList((prev) =>
         prev.map((s) => {
           if (s.series_no !== seriesNo) return s;
@@ -161,6 +181,7 @@ export default function SeriesManager({
         seriesList.map((series) => {
           const isExpanded = expandedNo === series.series_no;
           const isEditing = editingNo === series.series_no;
+          const hasUnsaved = unsavedSeriesNos.has(series.series_no);
 
           return (
             <div
@@ -295,7 +316,9 @@ export default function SeriesManager({
                             onClick={() =>
                               movePost(series.series_no, idx, 1)
                             }
-                            disabled={idx === series.posts.length - 1 || isPending}
+                            disabled={
+                              idx === series.posts.length - 1 || isPending
+                            }
                             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-25 transition-colors"
                             aria-label="아래로"
                           >
@@ -323,10 +346,17 @@ export default function SeriesManager({
                       </li>
                     ))}
                   </ul>
-                  <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                  <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                    {hasUnsaved ? (
+                      <span className="text-xs text-amber-500 font-medium">
+                        순서 변경이 저장되지 않았습니다
+                      </span>
+                    ) : (
+                      <span />
+                    )}
                     <button
                       onClick={() => saveOrder(series.series_no)}
-                      disabled={isPending}
+                      disabled={isPending || !hasUnsaved}
                       className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
                     >
                       {isPending ? "저장 중..." : "순서 저장"}

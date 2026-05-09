@@ -9,42 +9,34 @@ export const dynamic = "force-dynamic";
 export default async function NewPostPage() {
   const supabase = createAdminClient();
 
-  const { data: rows } = await supabase
-    .from("meta_info")
-    .select("category_no, category_name, series_no, series_name, series_seq_no")
-    .or("category_no.not.is.null,series_no.not.is.null");
+  const [{ data: categoryRows }, { data: seriesRows }, { data: postRows }] =
+    await Promise.all([
+      supabase.from("categories").select("category_no, category_name").order("category_no"),
+      supabase.from("series").select("series_no, series_name").order("series_no"),
+      supabase.from("posts").select("series_no, series_seq_no").not("series_no", "is", null),
+    ]);
 
-  const categoryMap = new Map<number, CategoryOption>();
+  const categories: CategoryOption[] = (categoryRows ?? []).map((c) => ({
+    category_no: c.category_no,
+    category_name: c.category_name,
+  }));
+
   const seriesMap = new Map<number, SeriesOption>();
-
-  for (const row of rows ?? []) {
-    if (row.category_no != null && !categoryMap.has(row.category_no)) {
-      categoryMap.set(row.category_no, {
-        category_no: row.category_no,
-        category_name: row.category_name ?? String(row.category_no),
-      });
-    }
-    if (row.series_no != null) {
-      const existing = seriesMap.get(row.series_no);
-      const seq = row.series_seq_no ?? 0;
-      if (!existing) {
-        seriesMap.set(row.series_no, {
-          series_no: row.series_no,
-          series_name: row.series_name ?? String(row.series_no),
-          max_seq_no: seq,
-        });
-      } else if (seq > existing.max_seq_no) {
-        existing.max_seq_no = seq;
-      }
+  for (const s of seriesRows ?? []) {
+    seriesMap.set(s.series_no, {
+      series_no: s.series_no,
+      series_name: s.series_name,
+      max_seq_no: 0,
+    });
+  }
+  for (const row of postRows ?? []) {
+    if (row.series_no == null) continue;
+    const entry = seriesMap.get(row.series_no);
+    if (entry && (row.series_seq_no ?? 0) > entry.max_seq_no) {
+      entry.max_seq_no = row.series_seq_no ?? 0;
     }
   }
-
-  const categories = Array.from(categoryMap.values()).sort(
-    (a, b) => a.category_no - b.category_no,
-  );
-  const seriesOptions = Array.from(seriesMap.values()).sort(
-    (a, b) => a.series_no - b.series_no,
-  );
+  const seriesOptions = Array.from(seriesMap.values());
 
   return (
     <div>

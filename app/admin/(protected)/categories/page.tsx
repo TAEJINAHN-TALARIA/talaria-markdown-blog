@@ -7,27 +7,23 @@ export const dynamic = "force-dynamic";
 
 export default async function CategoriesPage() {
   const supabase = createAdminClient();
-  const { data: posts } = await supabase
-    .from("meta_info")
-    .select("category_no, category_name")
-    .not("category_no", "is", null);
 
-  const categoryMap = new Map<number, CategoryInfo>();
-  for (const post of posts ?? []) {
-    if (post.category_no == null) continue;
-    if (!categoryMap.has(post.category_no)) {
-      categoryMap.set(post.category_no, {
-        category_no: post.category_no,
-        category_name: post.category_name ?? String(post.category_no),
-        post_count: 0,
-      });
-    }
-    categoryMap.get(post.category_no)!.post_count += 1;
+  const [{ data: categoryRows }, { data: postRows }] = await Promise.all([
+    supabase.from("categories").select("category_no, category_name").order("category_no"),
+    supabase.from("posts").select("category_no").not("category_no", "is", null),
+  ]);
+
+  const countMap = new Map<number, number>();
+  for (const row of postRows ?? []) {
+    if (row.category_no == null) continue;
+    countMap.set(row.category_no, (countMap.get(row.category_no) ?? 0) + 1);
   }
 
-  const categories = Array.from(categoryMap.values()).sort(
-    (a, b) => a.category_no - b.category_no,
-  );
+  const categories: CategoryInfo[] = (categoryRows ?? []).map((c) => ({
+    category_no: c.category_no,
+    category_name: c.category_name,
+    post_count: countMap.get(c.category_no) ?? 0,
+  }));
 
   return (
     <div>

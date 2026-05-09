@@ -1,7 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "@/app/admin/actions";
 
 export default function AdminNav({ email }: { email: string }) {
+  const pathname = usePathname();
+
+  function linkClass(href: string) {
+    const isActive =
+      href === "/admin"
+        ? pathname === href
+        : pathname === href || pathname.startsWith(href + "/");
+    return `text-sm transition-colors ${
+      isActive
+        ? "text-blue-600 dark:text-blue-400 font-semibold"
+        : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+    }`;
+  }
+
   return (
     <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -12,22 +29,13 @@ export default function AdminNav({ email }: { email: string }) {
           >
             Admin
           </Link>
-          <Link
-            href="/admin/posts/new"
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-          >
+          <Link href="/admin/posts/new" className={linkClass("/admin/posts/new")}>
             + New Post
           </Link>
-          <Link
-            href="/admin/categories"
-            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
+          <Link href="/admin/categories" className={linkClass("/admin/categories")}>
             Categories
           </Link>
-          <Link
-            href="/admin/series"
-            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-          >
+          <Link href="/admin/series" className={linkClass("/admin/series")}>
             Series
           </Link>
           <Link

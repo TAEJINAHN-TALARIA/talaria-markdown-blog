@@ -15,12 +15,74 @@ export interface PostData {
   series_name: string;
   series_no: number | null;
   series_seq_no: number | null;
-  thumbnail_url: string;
   open: boolean;
   content: string;
 }
 
+async function requireAuth(): Promise<void> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/admin/login");
+}
+
+async function resolveCategory(
+  supabase: ReturnType<typeof createAdminClient>,
+  categoryNo: number | null,
+  categoryName: string,
+): Promise<{ no: number | null; error?: string }> {
+  if (categoryNo !== null) return { no: categoryNo };
+  if (!categoryName) return { no: null };
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: maxRow } = await supabase
+      .from("categories")
+      .select("category_no")
+      .order("category_no", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const newNo = (maxRow?.category_no ?? 0) + 1;
+
+    const { error } = await supabase
+      .from("categories")
+      .insert({ category_no: newNo, category_name: categoryName });
+    if (!error) return { no: newNo };
+    if (error.code !== "23505") return { no: null, error: error.message };
+  }
+  return { no: null, error: "Failed to create category" };
+}
+
+async function resolveSeries(
+  supabase: ReturnType<typeof createAdminClient>,
+  seriesNo: number | null,
+  seriesName: string,
+): Promise<{ no: number | null; error?: string }> {
+  if (seriesNo !== null) return { no: seriesNo };
+  if (!seriesName) return { no: null };
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: maxRow } = await supabase
+      .from("series")
+      .select("series_no")
+      .order("series_no", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const newNo = (maxRow?.series_no ?? 0) + 1;
+
+    const { error } = await supabase
+      .from("series")
+      .insert({ series_no: newNo, series_name: seriesName });
+    if (!error) return { no: newNo };
+    if (error.code !== "23505") return { no: null, error: error.message };
+  }
+  return { no: null, error: "Failed to create series" };
+}
+
 export async function createPost(data: PostData) {
+  await requireAuth();
+
   const supabase = createAdminClient();
   const filePath = `${data.slug}/${data.slug}.md`;
 
@@ -30,20 +92,36 @@ export async function createPost(data: PostData) {
       contentType: "text/markdown; charset=utf-8",
       upsert: false,
     });
-
   if (uploadError) return { error: uploadError.message };
 
-  const { error: dbError } = await supabase.from("meta_info").insert({
+  const category = await resolveCategory(
+    supabase,
+    data.category_no,
+    data.category_name,
+  );
+  if (category.error) {
+    await supabase.storage.from("posts").remove([filePath]);
+    return { error: category.error };
+  }
+
+  const series = await resolveSeries(
+    supabase,
+    data.series_no,
+    data.series_name,
+  );
+  if (series.error) {
+    await supabase.storage.from("posts").remove([filePath]);
+    return { error: series.error };
+  }
+
+  const { error: dbError } = await supabase.from("posts").insert({
     title: data.title,
     slug: data.slug,
     description: data.description || null,
     file_path: filePath,
-    category_name: data.category_name || null,
-    category_no: data.category_no,
-    series_name: data.series_name || null,
-    series_no: data.series_no,
+    category_no: category.no,
+    series_no: series.no,
     series_seq_no: data.series_seq_no,
-    thumbnail_url: data.thumbnail_url || null,
     open: data.open,
   });
 
@@ -62,10 +140,13 @@ export async function updatePost(
   data: PostData,
   oldFilePath: string,
 ) {
+  await requireAuth();
+
   const supabase = createAdminClient();
   const newFilePath = `${data.slug}/${data.slug}.md`;
+  const slugChanged = oldFilePath !== newFilePath;
 
-  if (oldFilePath !== newFilePath) {
+  if (slugChanged) {
     const { error: uploadError } = await supabase.storage
       .from("posts")
       .upload(newFilePath, data.content, {
@@ -73,7 +154,6 @@ export async function updatePost(
         upsert: true,
       });
     if (uploadError) return { error: uploadError.message };
-    await supabase.storage.from("posts").remove([oldFilePath]);
   } else {
     const { error: uploadError } = await supabase.storage
       .from("posts")
@@ -83,25 +163,49 @@ export async function updatePost(
     if (uploadError) return { error: uploadError.message };
   }
 
+  const category = await resolveCategory(
+    supabase,
+    data.category_no,
+    data.category_name,
+  );
+  if (category.error) {
+    if (slugChanged) await supabase.storage.from("posts").remove([newFilePath]);
+    return { error: category.error };
+  }
+
+  const series = await resolveSeries(
+    supabase,
+    data.series_no,
+    data.series_name,
+  );
+  if (series.error) {
+    if (slugChanged) await supabase.storage.from("posts").remove([newFilePath]);
+    return { error: series.error };
+  }
+
   const { error: dbError } = await supabase
-    .from("meta_info")
+    .from("posts")
     .update({
       title: data.title,
       slug: data.slug,
       description: data.description || null,
       file_path: newFilePath,
-      category_name: data.category_name || null,
-      category_no: data.category_no,
-      series_name: data.series_name || null,
-      series_no: data.series_no,
+      category_no: category.no,
+      series_no: series.no,
       series_seq_no: data.series_seq_no,
-      thumbnail_url: data.thumbnail_url || null,
       open: data.open,
       updated_at: new Date().toISOString(),
     })
     .eq("id", postId);
 
-  if (dbError) return { error: dbError.message };
+  if (dbError) {
+    if (slugChanged) await supabase.storage.from("posts").remove([newFilePath]);
+    return { error: dbError.message };
+  }
+
+  if (slugChanged) {
+    await supabase.storage.from("posts").remove([oldFilePath]);
+  }
 
   revalidatePath("/");
   revalidatePath("/admin");
@@ -114,10 +218,12 @@ export async function deletePost(
   filePath: string,
   slug: string,
 ) {
+  await requireAuth();
+
   const supabase = createAdminClient();
 
   const { error: dbError } = await supabase
-    .from("meta_info")
+    .from("posts")
     .delete()
     .eq("id", postId);
 
@@ -132,11 +238,19 @@ export async function deletePost(
 }
 
 export async function uploadImage(formData: FormData) {
+  await requireAuth();
+
   const file = formData.get("file") as File;
   if (!file) return { error: "No file provided" };
 
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (!ALLOWED_TYPES.includes(file.type))
+    return { error: "이미지 파일만 업로드 가능합니다. (jpg, png, webp, gif)" };
+  if (file.size > 5 * 1024 * 1024)
+    return { error: "파일 크기는 5MB 이하여야 합니다." };
+
   const supabase = createAdminClient();
-  const ext = file.name.split(".").pop();
+  const ext = file.name.split(".").pop() ?? "bin";
   const fileName = `images/${Date.now()}.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
@@ -166,9 +280,11 @@ export async function signOut() {
 }
 
 export async function renameCategory(categoryNo: number, newName: string) {
+  await requireAuth();
+
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("meta_info")
+    .from("categories")
     .update({ category_name: newName })
     .eq("category_no", categoryNo);
 
@@ -180,10 +296,18 @@ export async function renameCategory(categoryNo: number, newName: string) {
 }
 
 export async function deleteCategory(categoryNo: number) {
+  await requireAuth();
+
   const supabase = createAdminClient();
+
+  await supabase
+    .from("posts")
+    .update({ category_no: null })
+    .eq("category_no", categoryNo);
+
   const { error } = await supabase
-    .from("meta_info")
-    .update({ category_name: null, category_no: null })
+    .from("categories")
+    .delete()
     .eq("category_no", categoryNo);
 
   if (error) return { error: error.message };
@@ -194,9 +318,11 @@ export async function deleteCategory(categoryNo: number) {
 }
 
 export async function renameSeries(seriesNo: number, newName: string) {
+  await requireAuth();
+
   const supabase = createAdminClient();
   const { error } = await supabase
-    .from("meta_info")
+    .from("series")
     .update({ series_name: newName })
     .eq("series_no", seriesNo);
 
@@ -208,10 +334,18 @@ export async function renameSeries(seriesNo: number, newName: string) {
 }
 
 export async function deleteSeries(seriesNo: number) {
+  await requireAuth();
+
   const supabase = createAdminClient();
+
+  await supabase
+    .from("posts")
+    .update({ series_no: null, series_seq_no: null })
+    .eq("series_no", seriesNo);
+
   const { error } = await supabase
-    .from("meta_info")
-    .update({ series_name: null, series_no: null, series_seq_no: null })
+    .from("series")
+    .delete()
     .eq("series_no", seriesNo);
 
   if (error) return { error: error.message };
@@ -224,11 +358,13 @@ export async function deleteSeries(seriesNo: number) {
 export async function updateSeriesOrder(
   updates: { id: string; series_seq_no: number }[],
 ) {
+  await requireAuth();
+
   const supabase = createAdminClient();
 
   const results = await Promise.all(
     updates.map(({ id, series_seq_no }) =>
-      supabase.from("meta_info").update({ series_seq_no }).eq("id", id),
+      supabase.from("posts").update({ series_seq_no }).eq("id", id),
     ),
   );
 
